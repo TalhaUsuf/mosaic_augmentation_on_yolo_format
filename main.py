@@ -1,3 +1,4 @@
+'''make 'data' folder inside w9 folder and place images and respective annotations inside 'data' folder'''
 import random
 from rich.console import Console
 import cv2
