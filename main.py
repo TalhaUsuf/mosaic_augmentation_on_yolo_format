@@ -4,13 +4,16 @@ from rich.console import Console
 import cv2
 import os
 import glob
+import copy
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
 from pathlib import Path
+from rich.console import Console
 
-OUTPUT_SIZE = (600, 600)  # Height, Width
-SCALE_RANGE = (0.3, 0.7)
+OUTPUT_SIZE = (1000, 1000)  # Height, Width
+# SCALE_RANGE = (0.3, 0.7)
+SCALE_RANGE = (0.3, 1.0)
 FILTER_TINY_SCALE = 1 / 50  # if height or width lower than this scale, drop it.
 
 ANNO_DIR = './dataset/WiderPerson/Annotations/'
@@ -33,10 +36,14 @@ def main():
                                                      filter_scale=FILTER_TINY_SCALE)
 
         cv2.imwrite(f'./img/{idx}_without_boxes.jpg', new_image)
+        Console().print(f"after augmenting, {len(new_annos)} annotations made .... ")
         for anno in new_annos:
+            c = random.sample(range(255), 3)
+            c = tuple([int(k) for k in c])
             start_point = (int(anno[1] * OUTPUT_SIZE[1]), int(anno[2] * OUTPUT_SIZE[0]))
             end_point = (int(anno[3] * OUTPUT_SIZE[1]), int(anno[4] * OUTPUT_SIZE[0]))
-            cv2.rectangle(new_image, start_point, end_point, (0, 255, 0), 1, cv2.LINE_AA)
+            # cv2.rectangle(new_image, start_point, end_point, (0, 255, 0), 1, cv2.LINE_AA)
+            cv2.rectangle(new_image, start_point, end_point, c, 2, cv2.LINE_AA)
         cv2.imwrite(f'img/{idx}_with_boxes.jpg', new_image)
         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         #                     disable showing images
@@ -50,8 +57,10 @@ def update_image_and_anno(all_img_list, all_annos, idxs, output_size, scale_rang
     output_img = np.zeros([output_size[0], output_size[1], 3], dtype=np.uint8)
     scale_x = scale_range[0] + random.random() * (scale_range[1] - scale_range[0])
     scale_y = scale_range[0] + random.random() * (scale_range[1] - scale_range[0])
+
     divid_point_x = int(scale_x * output_size[1])
     divid_point_y = int(scale_y * output_size[0])
+
 
     new_anno = []
     for i, idx in enumerate(idxs):
@@ -105,13 +114,19 @@ def update_image_and_anno(all_img_list, all_annos, idxs, output_size, scale_rang
 
 
 def get_dataset(anno_dir, img_dir):
+
     class_id = category_name.index('person')
 
     img_paths = []
     annos = []
-    base_path = Path(".")
-    images = base_path / "dataset" / "WiderPerson" / "Images"
-    annotations = base_path / "dataset" / "WiderPerson" / "Annotations"
+    base_path = Path(".")  # current dir
+    # images = base_path / "dataset" / "WiderPerson" / "Images"
+    # annotations = base_path / "dataset" / "WiderPerson" / "Annotations"
+    num_classes = len([k for k in open(base_path / "w9" / "obj.names").readlines() if not k.isspace()])
+    Console().print(f"total classes are : ====> {num_classes}")
+    images = base_path / "w9" / "data"
+    annotations = base_path / "w9" / "data"
+    img_dir = base_path / "w9" / "data"
     # Console().print(f"image path==>{images}")
     # Console().print(f"annotations path==>{annotations}")
     # Console().rule(title="paths", align="center", style="cyan")
@@ -121,12 +136,16 @@ def get_dataset(anno_dir, img_dir):
         anno_file = anno_file.as_posix()
         anno_id = anno_file.split('/')[-1].split('.')[0]
 
-        with open(anno_file, 'r') as f:
-            num_of_objs = int(f.readline())
+        with open("./" + anno_file, 'r') as f:
 
+
+            # num_of_objs = int(f.readline())
+            with open("./" + anno_file, 'r') as ff:
+                num_of_objs = len([k.strip() for k in ff.readlines() if not k.isspace()]) # f.readlines() --> list
+            Console().print(f"{num_of_objs} annotations are found ... ")
             # img_path = os.path.join(img_dir, f'{anno_id}.jpg')
             # Console().print(f"current dir. ===> {Path().cwd()}")
-            img_path = Path("./"+img_dir,f'{anno_id}.jpg').as_posix()
+            img_path = Path("./"+img_dir.as_posix(),f'{anno_id}.png').as_posix()
             # Console().print(f"image path is : {img_path}")
             img = cv2.imread(img_path)
             img_height, img_width, _ = img.shape
@@ -134,10 +153,27 @@ def get_dataset(anno_dir, img_dir):
 
             boxes = []
             for _ in range(num_of_objs):
-                obj = f.readline().rstrip().split(' ')
-                obj = [int(elm) for elm in obj]
-                if 3 < obj[0]:
+                obj = f.readline().rstrip().split()
+                obj = [float(elm) for elm in obj]
+                label_idx = int(obj[0])
+                if num_classes < label_idx: # skip annotation line if class idx is > no. of classes
                     continue
+                # convert annotations from yolo to wider-person format
+                #         [ 0      1    2     3  4]
+                # convert [label, xcen, ycen, w, h] --> all normalized
+                # replace the coordinates                      [     0       1   2    3   4]
+                                             # obj_format ---> [class_label, x1, y1, x2, y2]
+
+                # convert yolo to wider-person annotation format
+                xmin = (obj[1] - (obj[3] / 2)) * img_width
+                ymin = (obj[2] - (obj[4] / 2)) * img_height
+                xmax = (obj[1] + (obj[3] / 2)) * img_width
+                ymax = (obj[2] + (obj[4] / 2)) * img_height
+
+                obj[1] = xmin
+                obj[2] = ymin
+                obj[3] = xmax
+                obj[4] = ymax
 
                 xmin = max(obj[1], 0) / img_width
                 ymin = max(obj[2], 0) / img_height
@@ -148,7 +184,6 @@ def get_dataset(anno_dir, img_dir):
 
             if not boxes:
                 continue
-
         img_paths.append(img_path) # img_path is a list of images
         annos.append(boxes)
     with Console().status("lists made ....", spinner="bouncingBall"):
