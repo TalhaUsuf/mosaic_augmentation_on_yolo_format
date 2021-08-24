@@ -3,6 +3,7 @@ import random
 from rich.console import Console
 import cv2
 import os
+import shutil
 import glob
 import copy
 import numpy as np
@@ -14,7 +15,8 @@ from rich.console import Console
 OUTPUT_SIZE = (1000, 1000)  # Height, Width
 # SCALE_RANGE = (0.3, 0.7)
 SCALE_RANGE = (0.3, 1.0)
-FILTER_TINY_SCALE = 1 / 50  # if height or width lower than this scale, drop it.
+# FILTER_TINY_SCALE = 1 / 50  # if height or width lower than this scale, drop it.
+FILTER_TINY_SCALE = -1  # if height or width lower than this scale, drop it.
 
 ANNO_DIR = './dataset/WiderPerson/Annotations/'
 IMG_DIR = './dataset/WiderPerson/Images/'
@@ -24,8 +26,10 @@ category_name = ['background', 'person']
 
 def main():
     img_paths, annos = get_dataset(ANNO_DIR, IMG_DIR)
-
-    for idx in tqdm(range(100), desc="AUGMENTATION-NO:", total=100):
+    if os.path.exists("yolo_data/data"):
+        shutil.rmtree("yolo_data/data")
+    Path("yolo_data/data").mkdir(exist_ok=True, parents=True)
+    for idx in tqdm(range(1000), desc="AUGMENTATION-NO:", total=1000):
 
         # sample randomly indices out of a list of 22 annotations
         idxs = random.sample(range(len(annos)), 4)
@@ -34,17 +38,39 @@ def main():
                                                      idxs,
                                                      OUTPUT_SIZE, SCALE_RANGE,
                                                      filter_scale=FILTER_TINY_SCALE)
-
-        cv2.imwrite(f'./img/{idx}_without_boxes.jpg', new_image)
+        copy_img = copy.deepcopy(new_image)
+        # name = np.random.randint(0, 1000, (1,)).squeeze()
+        name = idx
+        # cv2.imwrite(f'./data/{idx}_without_boxes.jpg', copy_img)
+        cv2.imwrite(f'yolo_data/data/{name}.jpg', copy_img)
         Console().print(f"after augmenting, {len(new_annos)} annotations made .... ")
-        for anno in new_annos:
-            c = random.sample(range(255), 3)
-            c = tuple([int(k) for k in c])
+        # f = open(f'./data/{idx}_without_boxes.txt', 'w')
+        f = open(f'yolo_data/data/{name}.txt', 'w')
+        colors = np.random.randint(0, 255, (len(new_annos), 3))
+        colors = [tuple([int(k) for k in j]) for j in colors] # list of tuples of colors
+        lines = []
+        for k, anno in enumerate(new_annos):
+            # all augmented annotations generated for this image
+            # c = random.sample(range(255), 3)
+            # c = tuple([int(k) for k in c])
             start_point = (int(anno[1] * OUTPUT_SIZE[1]), int(anno[2] * OUTPUT_SIZE[0]))
             end_point = (int(anno[3] * OUTPUT_SIZE[1]), int(anno[4] * OUTPUT_SIZE[0]))
             # cv2.rectangle(new_image, start_point, end_point, (0, 255, 0), 1, cv2.LINE_AA)
-            cv2.rectangle(new_image, start_point, end_point, c, 2, cv2.LINE_AA)
-        cv2.imwrite(f'img/{idx}_with_boxes.jpg', new_image)
+            new_image = cv2.rectangle(new_image, start_point, end_point, colors[k], 2, cv2.LINE_AA)
+            # convert wider-person back to yolo format
+            cpy_annot = copy.deepcopy(anno)
+            cpy_annot[0] = anno[0]
+            cpy_annot[1] = ((start_point[0] + end_point[0]) / 2) / OUTPUT_SIZE[1]
+            cpy_annot[2] = ((start_point[1] + end_point[1]) / 2) / OUTPUT_SIZE[0]
+            cpy_annot[3] = (end_point[0] - start_point[0]) / OUTPUT_SIZE[1]
+            cpy_annot[4] = (end_point[1] - start_point[1]) / OUTPUT_SIZE[0]
+
+
+            f.write(f"{cpy_annot[0]} {cpy_annot[1]} {cpy_annot[2]} {cpy_annot[3]} {cpy_annot[4]}\n")
+            # lines.append(' '.join([str(i) for i in cpy_annot]))
+        # f.writelines(lines)
+        # cv2.imwrite(f'data/{idx}_with_boxes.jpg', new_image)
+        f.close()
         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         #                     disable showing images
         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -57,14 +83,15 @@ def update_image_and_anno(all_img_list, all_annos, idxs, output_size, scale_rang
     output_img = np.zeros([output_size[0], output_size[1], 3], dtype=np.uint8)
     scale_x = scale_range[0] + random.random() * (scale_range[1] - scale_range[0])
     scale_y = scale_range[0] + random.random() * (scale_range[1] - scale_range[0])
-
-    divid_point_x = int(scale_x * output_size[1])
+    # divid_point is the (x,y) point of intesection
+    #                                                             [  0  ,    1  ]
+    divid_point_x = int(scale_x * output_size[1]) # output_size : [rows, columns]
     divid_point_y = int(scale_y * output_size[0])
 
 
     new_anno = []
-    for i, idx in enumerate(idxs):
-        path = all_img_list[idx]
+    for i, idx in enumerate(idxs): # idxs is a list of 4 random indices
+        path = all_img_list[idx] # select a single (image,annotation) at index `idx`
         img_annos = all_annos[idx]
 
         img = cv2.imread(path)
@@ -105,8 +132,8 @@ def update_image_and_anno(all_img_list, all_annos, idxs, output_size, scale_rang
                 xmax = scale_x + bbox[3] * (1 - scale_x)
                 ymax = scale_y + bbox[4] * (1 - scale_y)
                 new_anno.append([bbox[0], xmin, ymin, xmax, ymax])
-
-    if 0 < filter_scale:
+    #                               0      1      2     3     4
+    if 0 < filter_scale: # anno : [label, xmin, ymin, xmax, ymax]
         new_anno = [anno for anno in new_anno if
                     filter_scale < (anno[3] - anno[1]) and filter_scale < (anno[4] - anno[2])]
 
@@ -180,7 +207,7 @@ def get_dataset(anno_dir, img_dir):
                 xmax = min(obj[3], img_width) / img_width
                 ymax = min(obj[4], img_height) / img_height
 
-                boxes.append([class_id, xmin, ymin, xmax, ymax])
+                boxes.append([label_idx, xmin, ymin, xmax, ymax])
 
             if not boxes:
                 continue
