@@ -29,7 +29,7 @@ def main():
     if os.path.exists("yolo_data/data"):
         shutil.rmtree("yolo_data/data")
     Path("yolo_data/data").mkdir(exist_ok=True, parents=True)
-    for idx in tqdm(range(1000), desc="AUGMENTATION-NO:", total=1000):
+    for idx in tqdm(range(100), desc="AUGMENTATION-NO:", total=100):
 
         # sample randomly indices out of a list of 22 annotations
         idxs = random.sample(range(len(annos)), 4)

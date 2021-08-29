@@ -17,3 +17,6 @@ Generate the mosaic augmented images with each image containing 4 images at diff
 Then replace the paths in the images.txt file with absolute paths.
 
 > `python generate_train._txt.py`
+
+
+Correct `obj.names` file manually.

@@ -1,6 +1,6 @@
-data/W9_form_page1.png
-data/W9_form_page2.png
-data/W9_form_page3.png
-data/W9_form_page4.png
-data/W9_form_page5.png
 data/W9_form_page6.png
+data/W9_form_page5.png
+data/W9_form_page4.png
+data/W9_form_page3.png
+data/W9_form_page2.png
+data/W9_form_page1.png
