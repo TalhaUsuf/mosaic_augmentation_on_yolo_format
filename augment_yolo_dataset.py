@@ -49,6 +49,8 @@ log.info(f"IMAGES FOUND IN {images_file[0].as_posix()} FILE, \n {images_list}")
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 transform = A.Compose([
     A.RandomCrop(width=800, height=800),
+    A.RandomRotate90(p=0.8),
+    A.Rotate(limit=5, always_apply=True),
     A.HorizontalFlip(p=0.5),
     A.RandomBrightnessContrast(p=0.2),
 ], bbox_params=A.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.10))
@@ -96,19 +98,20 @@ for img_path in track(images_list, description="PROCESSING IMG.", total=len(imag
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     w9fields = [idx2obj[k] for k in fields_idxs]
     log.info(f"w9fields ---> \n {w9fields}")
-    for aug_no in trange(1,desc="Augmentation No.", leave=False):
+    for aug_no in trange(2,desc="Augmentation No.", leave=False):
+    # for aug_no in range(2):
         transformed = transform(image=img, bboxes=annot, w9fields=w9fields)
         transformed_image = transformed['image']
         transformed_bboxes = transformed['bboxes']
-        w9fields = transformed['w9fields']
-        assert len(w9fields) == len(transformed_bboxes), f"length of augmented bboxes and augmented labels should match each other"
+        w9fields_trf = transformed['w9fields']
+        assert len(w9fields_trf) == len(transformed_bboxes), f"length of augmented bboxes and augmented labels should match each other"
         Console().print("%-35s %-s" % ("TRF. IMG SHAPE", transformed_image.shape))
         Console().print("%-35s %-s" % ("TRF. BOXES", transformed_bboxes))
-        Console().print("%-35s %-s" % ("W9 FIELDS", w9fields))
+        Console().print("%-35s %-s" % ("W9 FIELDS", w9fields_trf))
 
     #         writing to the file
     #     single image , multi - annotations , multi - labels
-        trf_fields2idxs = [obj2idx[k] for k in w9fields]
+        trf_fields2idxs = [obj2idx[k] for k in w9fields_trf]
         shutil.copyfile(obj_path[0].as_posix(), "yolo_augmented/"+f"{obj_path[0].name}") # copy the objk.names file to the augmented images directory
         # write the image to dir.
         cv2.imwrite(f"./yolo_augmented/data/{fname}_{aug_no}.jpg", transformed_image)
@@ -117,3 +120,8 @@ for img_path in track(images_list, description="PROCESSING IMG.", total=len(imag
                 faug.write(str(label)+" "+" ".join([str(k) for k in list(box)])+"\n")
 
         # annotation file writing completed
+
+with open("yolo_augmented/images.txt", "w") as fimgs:
+    imgs = list(Path("yolo_augmented/data").glob("*.jpg"))
+    imgs = [k.parents[0].stem+f"/{k.name}" "\n" for k in imgs]
+    fimgs.writelines(imgs)
