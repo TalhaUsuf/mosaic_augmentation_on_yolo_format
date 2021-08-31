@@ -6,6 +6,7 @@ import os
 import shutil
 import glob
 import copy
+from shutil import copyfile
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
@@ -77,6 +78,7 @@ def main():
         # new_image = cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB)
         # new_image = Image.fromarray(new_image.astype(np.uint8))
         # new_image.show()
+    copyfile("w9/obj.names", "yolo_data/obj.names") # copy the original obj.names file
 
 
 def update_image_and_anno(all_img_list, all_annos, idxs, output_size, scale_range, filter_scale=0.):
