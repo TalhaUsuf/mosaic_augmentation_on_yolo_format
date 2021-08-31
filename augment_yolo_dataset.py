@@ -11,6 +11,10 @@ from rich.logging import RichHandler
 from time import sleep
 from ast import literal_eval
 import numpy as np
+import os
+import itertools
+import shutil
+from tqdm import trange, tqdm
 
 # configure logs
 FORMAT = "%(message)s"
@@ -53,6 +57,11 @@ transform = A.Compose([
 #                      loop over each image in
 #             the images.txt file and read the corresponding annotations
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if os.path.exists("./yolo_augmented"):
+    shutil.rmtree("./yolo_augmented") # delete the existing dir.
+    Path("yolo_augmented/data").mkdir(exist_ok=True, parents=True) # make new dir.
+    
+Path("yolo_augmented/data").mkdir(exist_ok=True, parents=True) # make new dir.
 for img_path in track(images_list, description="PROCESSING IMG.", total=len(images_list), style="red on black"):
     log.info(f"processing image ---> {img_path}")
     parent = Path(img_path).parents[0]
@@ -87,10 +96,24 @@ for img_path in track(images_list, description="PROCESSING IMG.", total=len(imag
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     w9fields = [idx2obj[k] for k in fields_idxs]
     log.info(f"w9fields ---> \n {w9fields}")
-    transformed = transform(image=img, bboxes=annot, w9fields=w9fields)
-    transformed_image = transformed['image']
-    transformed_bboxes = transformed['bboxes']
-    w9fields = transformed['w9fields']
-    Console().print("%-35s %-s" % ("TRF. IMG SHAPE", transformed_image.shape))
-    Console().print("%-35s %-s" % ("TRF. BOXES", transformed_bboxes))
-    Console().print("%-35s %-s" % ("W9 FIELDS", w9fields))
+    for aug_no in trange(1,desc="Augmentation No.", leave=False):
+        transformed = transform(image=img, bboxes=annot, w9fields=w9fields)
+        transformed_image = transformed['image']
+        transformed_bboxes = transformed['bboxes']
+        w9fields = transformed['w9fields']
+        assert len(w9fields) == len(transformed_bboxes), f"length of augmented bboxes and augmented labels should match each other"
+        Console().print("%-35s %-s" % ("TRF. IMG SHAPE", transformed_image.shape))
+        Console().print("%-35s %-s" % ("TRF. BOXES", transformed_bboxes))
+        Console().print("%-35s %-s" % ("W9 FIELDS", w9fields))
+
+    #         writing to the file
+    #     single image , multi - annotations , multi - labels
+        trf_fields2idxs = [obj2idx[k] for k in w9fields]
+        shutil.copyfile(obj_path[0].as_posix(), "yolo_augmented/"+f"{obj_path[0].name}") # copy the objk.names file to the augmented images directory
+        # write the image to dir.
+        cv2.imwrite(f"./yolo_augmented/data/{fname}_{aug_no}.jpg", transformed_image)
+        with open(f"./yolo_augmented/data/{fname}_{aug_no}.txt", "w") as faug:
+            for label, box in tqdm(zip(trf_fields2idxs, transformed_bboxes), total=len(trf_fields2idxs), colour="green", desc="WRITING TO FILE"):
+                faug.write(str(label)+" "+" ".join([str(k) for k in list(box)])+"\n")
+
+        # annotation file writing completed
