@@ -41,3 +41,6 @@ tmtagsHistory
 .bundle
 
 ./*.jpg
+
+*.jpg
+*.txt
