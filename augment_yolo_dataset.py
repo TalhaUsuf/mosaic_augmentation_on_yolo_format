@@ -1,7 +1,7 @@
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #                      imports
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-import albumentations as A
+import albumentations as a
 import cv2
 from pathlib import Path
 from rich.console import Console
@@ -57,18 +57,73 @@ def main(argv):
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     #                      defining the augmentations
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    transform = A.Compose([
-        A.RandomCrop(width=800, height=800, p=0.5),
-        A.RandomRotate90(p=0.8),
-        A.Rotate(limit=5, always_apply=True),
-        A.HorizontalFlip(p=0.5),
-        A.ISONoise(p=0.5),
-        A.CLAHE(clip_limit=5.0, tile_grid_size=(8,8), p=0.5),
-        A.ColorJitter(p=0.5),
-        A.RandomBrightnessContrast(p=0.2),
-        A.Resize(height=1000, width=1000, always_apply=True),
-    ], bbox_params=A.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+    transform1 = a.Compose([
+        a.RandomCrop(width=800, height=800),
+        a.HorizontalFlip(p=0.5),
+        a.RandomBrightnessContrast(p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
 
+    transform2 = a.Compose([
+        a.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1),
+        a.ChannelDropout(channel_drop_range=(1, 1), fill_value=0, p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform3 = a.Compose([
+        a.Blur(blur_limit=2, p=1),
+        a.ChannelShuffle(p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform4 = a.Compose([
+        a.GaussianBlur(blur_limit=(3, 3), sigma_limit=0, p=1),
+        a.ColorJitter(brightness=0.2, contrast=0.4, saturation=0.3, hue=0.5, p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform5 = a.Compose([
+        a.MedianBlur(blur_limit=3, p=1),
+        a.FancyPCA(alpha=0.1, p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform6 = a.Compose([
+        a.MotionBlur(blur_limit=3, p=1),
+        a.ToSepia(p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform7 = a.Compose([
+        a.GlassBlur(sigma=0.7, max_delta=4, iterations=2, mode='fast', p=1),
+        a.RGBShift(r_shift_limit=20, g_shift_limit=20, b_shift_limit=20, p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform8 = a.Compose([
+        a.Resize(width=800, height=800),
+        a.VerticalFlip(p=1),
+        a.ISONoise(color_shift=(0.01, 0.05), intensity=(0.1, 0.5), p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform9 = a.Compose([
+        a.Resize(width=1000, height=1000, interpolation=cv2.INTER_LINEAR, p=1),
+        a.RandomRotate90(p=0.5),
+        a.GaussNoise(var_limit=(10.0, 50.0), mean=0, p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform10 = a.Compose([
+        a.Equalize(mode='cv', by_channels=True, mask=None, mask_params=(), p=1),
+        a.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=1),
+        a.ISONoise(color_shift=(0.01, 0.05), intensity=(0.1, 0.5), p=1)
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    transform11 = a.Compose([
+        a.RandomCrop(width=800, height=800, p=0.5),
+        a.RandomRotate90(p=0.8),
+        a.Rotate(limit=5, always_apply=True),
+        a.HorizontalFlip(p=0.5),
+        a.ISONoise(p=0.5),
+        a.CLAHE(clip_limit=5.0, tile_grid_size=(8,8), p=0.5),
+        a.ColorJitter(p=0.5),
+        a.RandomBrightnessContrast(p=0.2),
+        a.Resize(height=1000, width=1000, always_apply=True),
+    ], bbox_params=a.BboxParams(format='yolo', label_fields=['w9fields'], min_area=100, min_visibility=0.05))
+
+    trfs = [transform1, transform2, transform3, transform4, transform5, transform6, transform7, transform8, transform9, transform10, transform11]
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     #                      loop over each image in
     #             the images.txt file and read the corresponding annotations
@@ -79,17 +134,17 @@ def main(argv):
 
     Path(f"{FLAGS.out}/data").mkdir(exist_ok=True, parents=True)  # make new dir.
     for img_path in track(images_list, description="PROCESSING IMG.", total=len(images_list), style="red on black"):
-        log.info(f"processing image ---> {img_path}")
+        # log.info(f"processing image ---> {img_path}")
         parent = Path(img_path).parents[0]
         fname = Path(img_path).stem
-        img = cv2.imread(FLAGS.path +"/"+ parent.as_posix() + f"/{fname}.{FLAGS.img_type}")
-        annot = [k.strip().split() for k in open(FLAGS.path +"/"+ parent.as_posix() + f"/{fname}.txt", "r").readlines()]
+        img = cv2.imread(FLAGS.path +"/"+ "data" +  f"/{fname}.{FLAGS.img_type}")
+        annot = [k.strip().split() for k in open(FLAGS.path +"/"+ "data" + f"/{fname}.txt", "r").readlines()]
         annot = [[float(m) for m in i] for i in annot]
         annot = [j for j in annot if not (j[3] < 1e-3 or j[4] < 1e-3)]  # remove annots with width and height = 0
-        log.info(f"PREVIOUS ANNOTATIONS => {annot}")
+        # log.info(f"PREVIOUS ANNOTATIONS => {annot}")
         fields_idxs = [a.pop(0) for a in
                        annot]  # remove the bboxes from annot list (in-place op) and save class-idxs to fields_idxs
-        log.info(f"CLASS-IDX REMOVED ANNOTATIONS => {annot}")
+        # log.info(f"CLASS-IDX REMOVED ANNOTATIONS => {annot}")
         # # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         # #                      plot to see if boxes are correctly read
         # # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -111,32 +166,37 @@ def main(argv):
         #     cv2.waitKey(10)
         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         w9fields = [idx2obj[k] for k in fields_idxs]
-        log.info(f"w9fields ---> \n {w9fields}")
+        # log.info(f"w9fields ---> \n {w9fields}")
         for aug_no in trange(FLAGS.naug, desc="Augmentation No.", leave=False):
             # for aug_no in range(2):
-            transformed = transform(image=img, bboxes=annot, w9fields=w9fields)
-            transformed_image = transformed['image']
-            transformed_bboxes = transformed['bboxes']
-            w9fields_trf = transformed['w9fields']
-            assert len(w9fields_trf) == len(
-                transformed_bboxes), f"length of augmented bboxes and augmented labels should match each other"
-            Console().print("%-35s %-s" % ("TRF. IMG SHAPE", transformed_image.shape))
-            Console().print("%-35s %-s" % ("TRF. BOXES", transformed_bboxes))
-            Console().print("%-35s %-s" % ("W9 FIELDS", w9fields_trf))
+            for augmentation_type in trange(len(trfs), desc="Augmentation Type:", leave=False):
+                Console().rule(f"[red]{fname}.{FLAGS.img_type}[/red]", characters="=")
+                Console().rule(f"[red]{annot}[/red]", characters="=")
+                transformed = trfs[augmentation_type](image=img, bboxes=annot, w9fields=w9fields)
+                transformed_image = transformed['image']
+                transformed_bboxes = transformed['bboxes']
+                w9fields_trf = transformed['w9fields']
+                assert len(w9fields_trf) == len(
+                    transformed_bboxes), f"length of augmented bboxes and augmented labels should match each other"
+                # Console().print("%-35s %-s" % ("TRF. IMG SHAPE", transformed_image.shape))
+                # Console().print("%-35s %-s" % ("TRF. BOXES", transformed_bboxes))
+                # Console().print("%-35s %-s" % ("W9 FIELDS", w9fields_trf))
 
-            #         writing to the file
-            #     single image , multi - annotations , multi - labels
-            trf_fields2idxs = [obj2idx[k] for k in w9fields_trf]
-            shutil.copyfile(obj_path[0].as_posix(),
-                            f"{FLAGS.out}/" + f"{obj_path[0].name}")  # copy the objk.names file to the augmented images directory
-            # write the image to dir.
-            cv2.imwrite(f"./{FLAGS.out}/data/{fname}_{aug_no}.{FLAGS.out_img_type}", transformed_image)
-            with open(f"./{FLAGS.out}/data/{fname}_{aug_no}.txt", "w") as faug:
-                for label, box in tqdm(zip(trf_fields2idxs, transformed_bboxes), total=len(trf_fields2idxs),
-                                       colour="green", desc="WRITING TO FILE"):
-                    faug.write(str(label) + " " + " ".join([str(k) for k in list(box)]) + "\n")
+                #         writing to the file
+                #     single image , multi - annotations , multi - labels
+                trf_fields2idxs = [obj2idx[k] for k in w9fields_trf]
+                shutil.copyfile(obj_path[0].as_posix(),
+                                f"{FLAGS.out}/" + f"{obj_path[0].name}")  # copy the objk.names file to the augmented images directory
+                # write the image to dir.
+                cv2.imwrite(f"./{FLAGS.out}/data/{fname}_{aug_no}_{augmentation_type}.{FLAGS.out_img_type}", transformed_image)
+                with open(f"./{FLAGS.out}/data/{fname}_{aug_no}_{augmentation_type}.txt", "w") as faug:
+                    for label, box in tqdm(zip(trf_fields2idxs, transformed_bboxes), total=len(trf_fields2idxs),
+                                           colour="green", desc="WRITING TO FILE"):
+                        if not (box[2]<1e-5  or  box[3]<1e-5):
+                            if not (box[2]>1.0  or  box[3]>1.0):
+                                faug.write(str(label) + " " + " ".join([str(k) for k in list(box)]) + "\n")
 
-            # annotation file writing completed
+                # annotation file writing completed
 
     with open(f"{FLAGS.out}/images.txt", "w") as fimgs:
         imgs = list(Path(f"{FLAGS.out}/data").glob(f"*.{FLAGS.out_img_type}"))
