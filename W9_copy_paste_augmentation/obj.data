@@ -1,0 +1,4 @@
+classes = 6
+train = images.txt
+names = obj.names
+backup = backup/
