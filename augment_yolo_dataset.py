@@ -114,7 +114,7 @@ def main(argv):
     transform11 = a.Compose([
         a.RandomCrop(width=800, height=800, p=0.5),
         a.RandomRotate90(p=0.8),
-        a.Rotate(limit=5, always_apply=True),
+        a.Rotate(limit=15, always_apply=True),
         a.HorizontalFlip(p=0.5),
         a.ISONoise(p=0.5),
         a.CLAHE(clip_limit=5.0, tile_grid_size=(8,8), p=0.5),
