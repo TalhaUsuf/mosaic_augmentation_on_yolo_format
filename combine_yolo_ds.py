@@ -86,7 +86,7 @@ def main(argv):
     
     with open(str(dst / "images.txt"), "w") as ff:
         for f in track((dst / "data").iterdir(), total = list((dst / "data").iterdir()).__len__(), description="Writing imgs/annots."):
-            if f.is_file():
+            if f.is_file() and not f.name.endswith(".txt"): # .txt files are not written in images.txt file
                 ff.write(f"data/{f.name}\n")            
 
 
