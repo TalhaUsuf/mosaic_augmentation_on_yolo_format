@@ -10,11 +10,15 @@ It takes YOLO format dataset, performs the mosaic augmentation and saves data in
 
 # Usage
 
- - [Here](w8_cvat) is the dir. obtained after extracting the **cvat-yolo** format. CVAT annotations in *YOLO* format is wrong in terms of relative paths and that format is NOT valid for voxelFiftyOne. Hece for correcting the paths, run:
+** All subsequent commands must be called from inisde dir. in which [1_cvat_yolo_clean.py](1_cvat_yolo_clean.py) script is present**
 
-> `python 1_cvat_yolo_clean.py --original w8_cvat`
 
-this will correct the paths and save to `mosaic_augmentation_on_yolo_format/w9` present [here](mosaic_augmentation_on_yolo_format/w9). 
+ - [w8_cvat](../w8_cvat) is the dir. obtained after extracting the **cvat-yolo** format. CVAT annotations in *YOLO* format is wrong in terms of relative paths and that format is NOT valid for voxelFiftyOne. Hece for correcting the paths, run:
+
+> `python 1_cvat_yolo_clean.py --original ../w8_cvat`
+
+this will correct the paths and save to `mosaic_augmentation_on_yolo_format/w9` present [here](./w9). 
+
 
  - Generate the mosaic augmented images with each image containing 4 images at different scales. It takes [w9 format](w9) original dataset which is formed after hand annotations from the **cvat annotation** app. and saves the results to  [yolo_data](yolo_data) folder in yolo format.
 
@@ -28,10 +32,14 @@ this will correct the paths and save to `mosaic_augmentation_on_yolo_format/w9` 
 
 > `python augment_yolo_dataset.py --img_type jpg`
 
- - Run following command to apply augmentations to the original hand annotated dataset:
+ - Run following command to apply augmentations to the original hand annotated dataset, dataset will be saved to [original_w9_augmented](original_w9_augmented) dir.:
 > `python augment_yolo_dataset.py --naug 30 --path w9 --out original_w9_augmented --img_type png --out_img_type jpg`
 
+ - Run following command to combine the following two augmented datasets:
+    - [original_w9_augmented](original_w9_augmented) --- albumentations aug. applied to original dataset
+    - [yolo_augmented](yolo_augmented) --- albumentations aug. applied to mosaic augmented dataset
 
+> `python `
 # Validity of YOLO Dataset Format
 
 Use the **voxel-fiftyone api** to find the validity of dataset. It can also be used to convert between different detection dataset formats and export on disk.  
