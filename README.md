@@ -35,11 +35,11 @@ this will correct the paths and save to `mosaic_augmentation_on_yolo_format/w9` 
  - Run following command to apply augmentations to the original hand annotated dataset, dataset will be saved to [original_w9_augmented](original_w9_augmented) dir.:
 > `python augment_yolo_dataset.py --naug 30 --path w9 --out original_w9_augmented --img_type png --out_img_type jpg`
 
- - Run following command to combine the following two augmented datasets:
+ - Run following command to combine the following two augmented datasets, combined yolo-dataset will be saved as [combined_yolo_ds](combined_yolo_ds):
     - [original_w9_augmented](original_w9_augmented) --- albumentations aug. applied to original dataset
     - [yolo_augmented](yolo_augmented) --- albumentations aug. applied to mosaic augmented dataset
 
-> `python `
+> `python combine_yolo_ds.py`
 # Validity of YOLO Dataset Format
 
 Use the **voxel-fiftyone api** to find the validity of dataset. It can also be used to convert between different detection dataset formats and export on disk.  
