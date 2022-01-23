@@ -10,6 +10,12 @@ It takes YOLO format dataset, performs the mosaic augmentation and saves data in
 
 # Usage
 
+ - [Here](w8_cvat) is the dir. obtained after extracting the **cvat-yolo** format. CVAT annotations in *YOLO* format is wrong in terms of relative paths and that format is NOT valid for voxelFiftyOne. Hece for correcting the paths, run:
+
+> `python 1_cvat_yolo_clean.py --original w8_cvat`
+
+this will correct the paths and save to `mosaic_augmentation_on_yolo_format/w9` present [here](mosaic_augmentation_on_yolo_format/w9). 
+
  - Generate the mosaic augmented images with each image containing 4 images at different scales. It takes [w9 format](w9) original dataset which is formed after hand annotations from the **cvat annotation** app. and saves the results to  [yolo_data](yolo_data) folder in yolo format.
 
 > `python main.py` 
